@@ -23,7 +23,7 @@
             margin-bottom: 12px;
             text-align: center;
         }
-        .change-name-btn {
+        .btn-small {
             font-size: 12px;
             margin-left: 8px;
             cursor: pointer;
@@ -31,6 +31,10 @@
             border: 1px solid #000;
             border-radius: 4px;
             padding: 2px 6px;
+        }
+        .btn-reset {
+            color: red;
+            border-color: red;
         }
 
         .container {
@@ -120,7 +124,8 @@
 
     <div class="title-banner">
         🎲 <span id="userNameDisplay">ゲスト</span> の『凄録』
-        <button class="change-name-btn" onclick="askUserName(true)">名前変更</button>
+        <button class="btn-small" onclick="askUserName(true)">名前変更</button>
+        <button class="btn-small btn-reset" onclick="clearAllData()">データリセット</button>
     </div>
 
     <div class="container">
@@ -165,6 +170,14 @@
             document.getElementById('userNameDisplay').textContent = storedName;
         }
 
+        // データを全消去するデバッグ用関数
+        function clearAllData() {
+            if (confirm("これまでのスゴロク記録をすべて消去します。よろしいですか？")) {
+                localStorage.removeItem('sugoroku_records');
+                alert("データをリセットしました！");
+            }
+        }
+
         function saveRecord(statusType) {
             const date = document.getElementById('dateInput').value;
             const comment = document.getElementById('commentInput').value;
@@ -174,7 +187,7 @@
                 return;
             }
 
-            // ユニークなID（タイムスタンプ）を付与して、投稿順が狂わないようにする
+            // 完全に上書きを避けるため、一意のID（ミリ秒タイムスタンプ）を必ず持たせる
             const newRecord = { 
                 id: Date.now(), 
                 date: date, 
@@ -184,10 +197,10 @@
 
             let currentRecords = JSON.parse(localStorage.getItem('sugoroku_records')) || [];
             
-            // 【改善点】上書き判定を消去！1日に何度でも追加できるように末尾へpush
+            // 毎回完全に新規追加
             currentRecords.push(newRecord);
 
-            // まず日付順でソートし、同じ日付ならID（投稿時間）順に並べる
+            // ソート処理（日付順、同じなら登録順）
             currentRecords.sort((a, b) => {
                 if (a.date !== b.date) {
                     return new Date(a.date) - new Date(b.date);
