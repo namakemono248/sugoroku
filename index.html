@@ -17,7 +17,6 @@
             flex-direction: column;
         }
 
-        /* アプリ名・ユーザー名表示エリア */
         .title-banner {
             font-size: 24px;
             font-weight: bold;
@@ -70,7 +69,6 @@
             font-weight: bold;
             text-decoration: none;
             color: #000000;
-            cursor: pointer;
         }
         .nav-button:hover { background-color: #f0f0f0; }
 
@@ -146,38 +144,27 @@
 
     <script>
         window.onload = function() {
-            // 今日の日付をセット
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateInput').value = today;
-
-            // ユーザー名のチェック
             askUserName(false);
         };
 
-        // ユーザー名を確認・登録する関数
         function askUserName(isForceChange) {
             let storedName = localStorage.getItem('sugoroku_username');
-
-            // 名前が未登録、または「名前変更」ボタンが押された場合
             if (!storedName || isForceChange) {
                 const defaultPrompt = storedName || "プレイヤー1";
                 let name = prompt("ユーザーネームを登録してください：", defaultPrompt);
-                
                 if (name && name.trim() !== "") {
                     localStorage.setItem('sugoroku_username', name.trim());
                     storedName = name.trim();
                 } else if (!storedName) {
-                    // キャンセルされたり空欄ならデフォルト名にする
                     localStorage.setItem('sugoroku_username', "プレイヤー1");
                     storedName = "プレイヤー1";
                 }
             }
-            
-            // 画面の表示を更新
             document.getElementById('userNameDisplay').textContent = storedName;
         }
 
-        // 記録保存関数
         function saveRecord(statusType) {
             const date = document.getElementById('dateInput').value;
             const comment = document.getElementById('commentInput').value;
@@ -187,20 +174,30 @@
                 return;
             }
 
-            const newRecord = { date, comment, status: statusType };
+            // ユニークなID（タイムスタンプ）を付与して、投稿順が狂わないようにする
+            const newRecord = { 
+                id: Date.now(), 
+                date: date, 
+                comment: comment, 
+                status: statusType 
+            };
+
             let currentRecords = JSON.parse(localStorage.getItem('sugoroku_records')) || [];
             
-            const existingIndex = currentRecords.findIndex(r => r.date === date);
-            if (existingIndex !== -1) {
-                currentRecords[existingIndex] = newRecord;
-            } else {
-                currentRecords.push(newRecord);
-            }
+            // 【改善点】上書き判定を消去！1日に何度でも追加できるように末尾へpush
+            currentRecords.push(newRecord);
 
-            currentRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // まず日付順でソートし、同じ日付ならID（投稿時間）順に並べる
+            currentRecords.sort((a, b) => {
+                if (a.date !== b.date) {
+                    return new Date(a.date) - new Date(b.date);
+                }
+                return a.id - b.id;
+            });
+
             localStorage.setItem('sugoroku_records', JSON.stringify(currentRecords));
 
-            alert(`「${date}」の記録を保存しました！`);
+            alert(`記録を追加しました！すごろくが進みます！`);
             document.getElementById('commentInput').value = '';
         }
     </script>
