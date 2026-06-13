@@ -130,62 +130,93 @@
 
     <script>
         window.onload = function() {
-            // ユーザー名の表示
-            const storedName = localStorage.getItem('sugoroku_username') || "プレイヤー1";
-            document.getElementById('userNameDisplay').textContent = storedName;
+    // ユーザー名の表示
+    const storedName = localStorage.getItem('sugoroku_username') || "プレイヤー1";
+    document.getElementById('userNameDisplay').textContent = storedName;
 
-            // データの読み込み
-            const records = JSON.parse(localStorage.getItem('sugoroku_records')) || [];
-            const board = document.getElementById('board');
+    // データの読み込み
+    const records = JSON.parse(localStorage.getItem('sugoroku_records')) || [];
+    const board = document.getElementById('board');
 
-            // 最低でも15マス（3行分）は盤面を表示するためのダミー処理
-            const displayCount = Math.max(records.length, 15);
+    // 1. 各ステータスが「何マス進む（何マス分表示する）か」を定義する
+    const stepMap = {
+        'very-good': 3,  // かなりできた => 3マス
+        'good': 2,       // できた => 2マス
+        'so-so': 1,      // すこしでき => 1マス
+        'normal': 1,     // ふつう => 1マス
+        'bad-hint': 1,   // すこし失敗 => 1マス
+        'bad': 2,        // 失敗 => 1マス
+        'very-bad': 3    // かなり失敗 => 1マス
+    };
+
+    // 2. 実際の記録データから、進むマス数に応じて「マスの配列」を新しく作り直す
+    let finalCellsData = [];
+    
+    records.forEach(data => {
+        // そのステータスに応じたマスの数だけ、同じデータを配列に複製して突っ込む
+        const steps = stepMap[data.status] || 1;
+        for (let s = 0; s < steps; s++) {
+            // 2マス目以降はコメントが連続するとうるさいので、最初の1マス目だけ日付とコメントを出す工夫
+            finalCellsData.push({
+                date: data.date,
+                comment: s === 0 ? data.comment : "（トコトコ…）", // 2マス目以降の文字
+                status: data.status,
+                isMainCell: s === 0,
+                fullComment: data.comment // ポップアップ用
+            });
+        }
+    });
+
+    // 最低でも15マス（3行分）は盤面を表示するためのダミー処理
+    const displayCount = Math.max(finalCellsData.length, 15);
+    let currentRow = null;
+    
+    for (let i = 0; i < displayCount; i++) {
+        // 5マスごとに新しい「行（Row）」を作成する
+        if (i % 5 === 0) {
+            currentRow = document.createElement('div');
+            currentRow.className = 'board-row';
             
-            let currentRow = null;
-            
-            for (let i = 0; i < displayCount; i++) {
-                // 5マスごとに新しい「行（Row）」を作成する
-                if (i % 5 === 0) {
-                    currentRow = document.createElement('div');
-                    currentRow.className = 'board-row';
-                    
-                    // 2行目、4行目、6行目...（偶数行）は逆向き(右から左)にする
-                    if (Math.floor(i / 5) % 2 === 1) {
-                        currentRow.classList.add('reverse');
-                    }
-                    board.appendChild(currentRow);
-                }
-
-                // マス目（Cell）の作成
-                const cell = document.createElement('div');
-                
-                if (i < records.length) {
-                    // データがあるマス
-                    const data = records[i];
-                    cell.className = `grid-cell status-${data.status}`;
-                    
-                    // 日付のフォーマット（月/日 だけにする）
-                    const dateObj = new Date(data.date);
-                    const dateText = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-                    
-                    cell.innerHTML = `
-                        <div class="cell-date">${dateText}</div>
-                        <div class="cell-comment">${data.comment}</div>
-                    `;
-                    
-                    // クリックしたら詳細をポップアップ（C#のイベントハンドラ登録みたいなもの）
-                    cell.onclick = function() {
-                        alert(`【${data.date}の記録】\n\n${data.comment}`);
-                    };
-                } else {
-                    // データがない未来のダミーマス
-                    cell.className = 'grid-cell status-empty';
-                    cell.innerHTML = `<div class="cell-date">??</div><div class="cell-comment">これからの未来</div>`;
-                }
-
-                currentRow.appendChild(cell);
+            // 偶数行は逆向き(右から左)にする
+            if (Math.floor(i / 5) % 2 === 1) {
+                currentRow.classList.add('reverse');
             }
-        };
+            board.appendChild(currentRow);
+        }
+
+        // マス目（Cell）の作成
+        const cell = document.createElement('div');
+        
+        if (i < finalCellsData.length) {
+            // データがあるマス
+            const cellData = finalCellsData[i];
+            cell.className = `grid-cell status-${cellData.status}`;
+            
+            // 日付のフォーマット（月/日）
+            const dateObj = new Date(cellData.date);
+            const dateText = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+            
+            // 最初のマスだけ日付をちゃんと出す
+            const displayDate = cellData.isMainCell ? dateText : "進む";
+            
+            cell.innerHTML = `
+                <div class="cell-date">${displayDate}</div>
+                <div class="cell-comment">${cellData.comment}</div>
+            `;
+            
+            // クリックしたら詳細をポップアップ
+            cell.onclick = function() {
+                alert(`【${cellData.date}の記録】\n\n${cellData.fullComment}`);
+            };
+        } else {
+            // データがない未来のダミーマス
+            cell.className = 'grid-cell status-empty';
+            cell.innerHTML = `<div class="cell-date">??</div><div class="cell-comment">これからの未来</div>`;
+        }
+
+        currentRow.appendChild(cell);
+    }
+};
     </script>
 </body>
 </html>
